@@ -37,18 +37,43 @@ def get_latest_version():
                 return match.group(1)
     return None
 
+def update_pkgbuild(pkgbuild, version):
+    # Update the PKGBUILD file content
+    pkgbuild = re.sub(r'^pkgver=.*$', f'pkgver={version}', pkgbuild, flags=re.MULTILINE)
+    pkgbuild = re.sub(r'^pkgrel=.*$', 'pkgrel=1', pkgbuild, flags=re.MULTILINE)
+    pkgbuild = re.sub(
+        r'^source=\(".*"\)$',
+        f'source=("https://downloads.nordlayer.com/linux/latest/debian/pool/main/nordlayer_{version}_amd64.deb")',
+        pkgbuild,
+        flags=re.MULTILINE
+    )
+    return pkgbuild
+
 
 if __name__ == '__main__':
-    print("Getting latest version from website...")
+    print("Getting latest version from website.")
+    
     if (latest_version := get_latest_version()):
+
         print(f'Found latest version: {latest_version}')
-        print("Updating PKBUILD file, using updpkgsums from pacman-contrib package.")
+        print("Updating version and source in PKBUILD.")
+
+        with open("PKGBUILD", "r+") as pkbuild_file:
+            pkbuild_file.write(
+                update_pkgbuild(pkbuild_file.read(), latest_version)
+            )
+
+        print("Updating checksums in PKBUILD file, using updpkgsums from pacman-contrib package.")
+
         if (updpkgsums := shutil.which("updpkgsums")):
             subprocess.run([updpkgsums], check=True)
+
             print("Regenerating .SRCINFO file.")
+
             if (makepkg := shutil.which("makepkg")):
                 with open(".SRCINFO", "w") as srcinfo_file:
                     subprocess.run(['makepkg', '--printsrcinfo'], stdout=srcinfo_file, check=True)
+
                 print('All updates completed successfully; finished.')
             else:
                 print("Cannot find makepkg. Maybe there is an issue with your PATH?")
