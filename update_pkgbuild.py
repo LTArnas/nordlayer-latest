@@ -56,14 +56,17 @@ if __name__ == '__main__':
     if (latest_version := get_latest_version()):
 
         print(f'Found latest version: {latest_version}')
-        print("Updating version and source in PKBUILD.")
+        print("Updating version and source in PKGBUILD.")
 
-        with open("PKGBUILD", "r+") as pkbuild_file:
-            pkbuild_file.write(
-                update_pkgbuild(pkbuild_file.read(), latest_version)
-            )
+        with open("PKGBUILD", "r+") as pkgbuild_file:
+            if (pkgbuild_content := pkgbuild_file.read()):
+                pkgbuild_file.seek(0)
+                pkgbuild_file.truncate(0)
+                pkgbuild_file.write(update_pkgbuild(pkgbuild_content, latest_version))
+            else:
+                print("PKGBUILD appears to be empty, or reading the file failed.")
 
-        print("Updating checksums in PKBUILD file, using updpkgsums from pacman-contrib package.")
+        print("Updating checksums in PKGBUILD file, using updpkgsums from pacman-contrib package.")
 
         if (updpkgsums := shutil.which("updpkgsums")):
             subprocess.run([updpkgsums], check=True)
